@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>敬拜 Vocal 和聲魔法教學系統</title>
+    <!-- 引入核心庫：React, ReactDOM, Babel, Tailwind -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slide-in-bottom { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .animate-fade-in { animation: fade-in 0.6s ease-out; }
+        .animate-slide-up { animation: slide-in-bottom 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+
+        // 自定義圖示組件 (解決 lucide-react 加載錯誤)
+        const Icon = ({ name, size = 24, className = "" }) => {
+            const icons = {
+                Mic2: <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>,
+                Zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>,
+                Layout: <rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="3" x2="21" y1="9" y2="9"/><line x1="9" x2="9" y1="21" y2="9"/>,
+                ChevronLeft: <path d="m15 18-6-6 6-6"/>,
+                ChevronRight: <path d="m9 18 6-6-6-6"/>,
+                Home: <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>,
+                RotateCcw: <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/>,
+                Lightbulb: <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A5 5 0 0 0 8 8c0 1.3.5 2.6 1.5 3.5.8.8 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>,
+                Star: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>,
+                PlayCircle: <circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>,
+                HelpCircle: <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/>,
+                CheckCircle2: <circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>,
+                AlertCircle: <circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>,
+                ClipboardCheck: <rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/>,
+                Trophy: <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>,
+                Music: <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>,
+                ArrowRight: <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>,
+                Info: <circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="16" y2="12"/><line x1="12" x2="12.01" y1="8" y2="8"/>
+            };
+
+            return (
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width={size}
+                    height={size}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={className}
+                >
+                    {icons[name] || null}
+                </svg>
+            );
+        };
+
+        function App() {
+            const [view, setView] = useState('home');
+            const [currentModule, setCurrentModule] = useState(0);
+            const [currentSlide, setCurrentSlide] = useState(0);
+            const [isQuizActive, setIsQuizActive] = useState(false);
+            const [currentQuizStep, setCurrentQuizStep] = useState(0);
+            const [quizAnswer, setQuizAnswer] = useState(null);
+            const [answers, setAnswers] = useState({});
+            const [checkedItems, setCheckedItems] = useState({});
+            const [recommendation, setRecommendation] = useState(null);
+
+            const modules = [
+                {
+                    id: 'm1',
+                    title: '單元一：聽覺直覺訓練',
+                    level: '基礎',
+                    category: 'ear',
+                    description: '用「心情」與「階梯」建立和音直覺',
+                    slides: [
+                        { title: '和聲的心情顏色', content: '大三度聽起來明亮開闊、像「陽光打開窗戶」\n小三度聽起來柔和內斂、像「月光收進胸口」\n不需要算音程，先用耳朵聽出這兩種心情' },
+                        { title: '零基礎秘訣：跳格法', content: '在音階 Do Re Mi Fa Sol 裡，跳過一個就是三度\n主唱站哪一格，你就站在他「上方兩格」那層\n這是最簡單、最好聽的「安全平行線」' },
+                        { title: '即時反應：平行樓梯', content: '想像你跟主唱走在兩條完全「平行的樓梯」上\n主唱向上走一階，你也就跟著向上走一階\n練習在沒看譜時，讓聲音與主旋律維持同等距離' }
+                    ],
+                    quizzes: [
+                        {
+                            question: "當旋律進到「降服、流淚呼求」的安靜時刻，和聲通常選用哪種色彩？",
+                            options: [
+                                { text: "大三度 (陽光)", explanation: "不建議。大三度色彩過於陽光，不符合呼求的內斂情緒。" },
+                                { text: "小三度 (月光)", explanation: "正確！小三度的內斂特質能完美襯托感性且渴慕的情緒。" },
+                                { text: "純五度 (中性)", explanation: "不建議。五度音程色彩過於中性，缺乏情緒引導。" }
+                            ],
+                            correctIndex: 1
+                        },
+                        {
+                            question: "若在 D 大調中，主唱唱出級數「3」，你想唱「上方三度」，你該唱？",
+                            options: [
+                                { text: "5 (跳過 4)", explanation: "正確！在級數邏輯中，3 的上方跳一格就是 5。" },
+                                { text: "1 (下方音)", explanation: "錯誤。1 是 3 的下方三度。" },
+                                { text: "4 (二度音)", explanation: "錯誤。這會產生尖銳撞音，不具備三度美感。" }
+                            ],
+                            correctIndex: 0
+                        },
+                        {
+                            question: "在極快的歌曲中，若來不及思考樂理，最好的直覺反應是？",
+                            options: [
+                                { text: "模仿鋼琴手", explanation: "不建議。鋼琴音符繁雜，人聲難以即時精準捕捉。" },
+                                { text: "維持平行樓梯平移", explanation: "正確！建立平移直覺能幫你在沒譜時快速定位。" },
+                                { text: "保持沈默", explanation: "不建議。Vocal 應嘗試建立和諧的支撐。" }
+                            ],
+                            correctIndex: 1
+                        }
+                    ],
+                    checks: [
+                        { id: 'c1_1', text: '唱出 1-3-5 分解和弦', lesson: '1-3-5 是和音的導航圖，唱準就不會迷路\n它是安全網，必須內化成肌肉反射\n音準飄掉就回 1，重新建立音程支點' },
+                        { id: 'c1_2', text: '唱出對應的大三度音', lesson: '大三度聽起來是陽光向上、綻放的感覺\n練習時要想像聲音「往外推」而非縮在喉嚨\n根音是地基，三音則是決定好聽與否的靈魂' },
+                        { id: 'c1_3', text: '聽辨平行三度層次', lesson: '流行敬拜的厚度多來自「平行三度」\n聽覺重點：剥離主旋律，只聽那一層色彩\n先在副歌處穩定咬住那一條「平行線」' }
+                    ]
+                },
+                {
+                    id: 'm2',
+                    title: '單元二：垂直 DNA 邏輯',
+                    level: '基礎',
+                    category: 'theory',
+                    description: '拆解家族成員：誰是安全的人？',
+                    slides: [
+                        { title: '蓋房子比喻：1-3-5 成員', content: '每個和弦就像一棟房子，由 1、3、5 組成\n只要唱這三個人其中之一，房子就很穩\n記住這三個「安全成員」，永遠不唱錯' },
+                        { title: '白話記法：數一跳一', content: '在鋼琴鍵盤或簡譜上，從 1 開始「數一跳一」\n1 (跳過2) → 3 (跳過4) → 5\n這是最簡單的成員提取法，全宇宙通用' },
+                        { title: '救命繩：回歸根音 (1)', content: '根音是地基，也是迷路時的救命繩索\n若反應不及，請立刻大聲唱出 1 音\n根音能給予樂團最強大的穩定力' }
+                    ],
+                    quizzes: [
+                        {
+                            question: "當樂譜標示為 Am 時，組成是 6-1-3，哪個音決定它是憂鬱的小調？",
+                            options: [
+                                { text: "6 (根音)", explanation: "錯誤。根音決定和弦名稱，不決定明暗色彩。" },
+                                { text: "1 (三音)", explanation: "正確！6 到 1 是小三度，讓 Am 聽起來充滿思索與憂鬱。" },
+                                { text: "3 (五音)", explanation: "錯誤。五音是中性支柱，無法決定調性明暗。" }
+                            ],
+                            correctIndex: 1
+                        },
+                        {
+                            question: "司琴突然彈了一個你沒練過的 B 和弦，最保險的做法是？",
+                            options: [
+                                { text: "唱 B 音 (根音)", explanation: "正確！根音是和弦最穩的支點，絕對安全。" },
+                                { text: "嘗試大跳高音", explanation: "錯誤。在不熟悉時大跳容易產生嚴重撞音。" },
+                                { text: "停止歌唱", explanation: "不建議。Vocal 應嘗試用根音穩定支撐。" }
+                            ],
+                            correctIndex: 0
+                        },
+                        {
+                            question: "C 大和弦 (1) 是 C-E-G。若主唱唱 E，你想唱得比他高，該選？",
+                            options: [
+                                { text: "C 音", explanation: "錯誤。C 是 E 的下方音，會比主領低。" },
+                                { text: "G 音", explanation: "正確！G 是五度音且位於 E 之上，和諧開闊。" },
+                                { text: "F 音", explanation: "錯誤。F 不是家族成員，會造成刺耳撞音。" }
+                            ],
+                            correctIndex: 1
+                        }
+                    ],
+                    checks: [
+                        { id: 'c2_1', text: '背出常用和弦家族', lesson: 'C:CEG / F:FAC / G:GBD / Am:ACE\n這是敬拜團的通用語言，熟記後編寫變超快\n寫對組成音，才不會跟吉他、鋼琴打架' },
+                        { id: 'c2_2', text: '辨識並唱出關鍵三音', lesson: '和音對味的關鍵就在決定色彩的三音\n練習在切換大小調時，精準捕捉 3 或 b3\n三音是情感開關，掌控它就能掌控溫度' },
+                        { id: 'c2_3', text: '換和弦首拍精準踩根音', lesson: '根音是給予會眾安全感最簡單的方式\n練習換和弦首拍，用紮實聲音踩在根音上\n地基穩了，後續發展三五度才會真的好聽' }
+                    ]
+                },
+                {
+                    id: 'm3',
+                    title: '單元三：流暢導進技術',
+                    level: '進階',
+                    category: 'practice',
+                    description: '讓聲部像水流一樣連接',
+                    slides: [
+                        { title: '共通音：音符間的膠水', content: '找出兩個換行和弦中「重複出現」的成員\n如果有，你的聲音就「停在那裡」不要動\n這會讓和聲聽起來非常流暢、不費力' },
+                        { title: '散步原則：小移動最高級', content: '優先用「走路(級進)」而不是「跳躍(大跳)」\n大跳容易晃動，也會分散會眾專注力\n目標：讓和聲穩定隨著曲式推進' },
+                        { title: '避開「貼身模仿」', content: '主旋律移動時，和音要像「陪走」而非「貼走」\n一直貼著平移五度會讓聲部黏死、失去空間\n用不同距離 (三或六度) 創造聽覺空氣感' }
+                    ],
+                    quizzes: [
+                        {
+                            question: "從 C (1-3-5) 換到 G (5-7-2) 時，應用共通音原則，你該停在哪？",
+                            options: [
+                                { text: "5 (Sol)", explanation: "正確！Sol 同時存在兩者中，不動能創造最穩銜接。" },
+                                { text: "1 (Do)", explanation: "錯誤。G 和弦不包含 Do，停留會產生碰撞。" },
+                                { text: "3 (Mi)", explanation: "錯誤。G 和弦不包含 Mi，這是無效停留。" }
+                            ],
+                            correctIndex: 0
+                        },
+                        {
+                            question: "主旋律從 1 跳到 5 時，和音聲部最理想的做法是？",
+                            options: [
+                                { text: "跟著旋律大跳", explanation: "不建議。這違反最小移動原則，聽起來突兀。" },
+                                { text: "在附近找最近成員", explanation: "正確！保持微幅移動能維持平衡感與層次。" },
+                                { text: "唱同一個音", explanation: "不建議。這樣失去了和聲功能，變成齊唱。" }
+                            ],
+                            correctIndex: 1
+                        },
+                        {
+                            question: "為什麼要避開平行五度？",
+                            options: [
+                                { text: "聽起來太和諧", explanation: "錯誤。平行五度會導致聲部失去獨立性。" },
+                                { text: "會讓聲部黏成一坨", explanation: "正確！適度音程變化能創造空間深度與美感。" },
+                                { text: "五度音難唱準", explanation: "錯誤。這主要是音樂美學與層次的考量。" }
+                            ],
+                            correctIndex: 1
+                        }
+                    ],
+                    checks: [
+                        { id: 'c3_1', text: '找出 I 到 IV 共通音', lesson: '共通音是固定點，能讓聽眾感到安定\n練習在換和弦時釘住那個音，不要晃動\n你會發現線條瞬間變得極為流暢專業' },
+                        { id: 'c3_2', text: '編寫無三度以上大跳', lesson: '專業秘訣在於「隱形移動」的質感\n若和音跳得比主唱兇，通常需要簡化\n保持微小挪動，是和諧與穩定的來源' },
+                        { id: 'c3_3', text: '主動留白，創造層次感', lesson: '有時「沈默」是最好的和聲\n主旋律走動時，可用長音或留白支撐\n這能讓團隊聲音聽起來更有空間深度' }
+                    ]
+                }
+            ];
+
+            const quizQuestions = [
+                { q: '你能不用樂器輔助，直接唱出標準音 C 嗎？', cat: 'ear', tip: '核心觀念：調性與基礎音感的掌握。' },
+                { q: '你聽到兩個音，能分辨「陽光」還是「憂慮」嗎？', cat: 'ear', tip: '核心觀念：大小調色彩辨識力。' },
+                { q: '你清楚 C 和 Am 兩大家族的成員差異嗎？', cat: 'theory', tip: '核心觀念：和弦組成 DNA 基礎。' },
+                { q: '你知道敬拜大魔王 1–4–5-6m 各是哪些音嗎？', cat: 'theory', tip: '核心觀念：級數系統應用能力。' },
+                { q: '你能在聽完副歌後，立刻唱出平行的上方三度嗎？', cat: 'practice', tip: '核心觀念：即時聽辨與產出力。' },
+                { q: '你的和音線條能否避免大幅度的突然大跳？', cat: 'practice', tip: '核心觀念：流暢導進與穩定性。' }
+            ];
+
+            const handleAnalyze = () => {
+                const stats = { ear: 0, theory: 0, practice: 0 };
+                quizQuestions.forEach((q, i) => { if (answers[i] === 'yes') stats[q.cat]++; });
+                const categories = [
+                    { id: 'ear', score: stats.ear, idx: 0, reason: '建議從單元一的「顏色聽辨」開始。' },
+                    { id: 'theory', score: stats.theory, idx: 1, reason: '單元二的「家族 DNA」能幫你找回安全感。' },
+                    { id: 'practice', score: stats.practice, idx: 2, reason: '建議先攻單元三的「流暢導進」技術。' }
+                ];
+                const weakest = [...categories].sort((a, b) => a.score - b.score)[0];
+                setRecommendation(weakest);
+                setCurrentModule(weakest.idx);
+                setCurrentSlide(0);
+                setView('module');
+            };
+
+            const toggleCheck = (id) => {
+                setCheckedItems(prev => ({ ...prev, [id]: !prev[id] }));
+            };
+
+            const resetAssessment = () => { setAnswers({}); setRecommendation(null); };
+
+            const handleNext = () => {
+                const mod = modules[currentModule];
+                if (!isQuizActive) {
+                    if (currentSlide < mod.slides.length - 1) setCurrentSlide(prev => prev + 1);
+                    else { setIsQuizActive(true); setCurrentQuizStep(0); setQuizAnswer(null); }
+                } else {
+                    if (quizAnswer === mod.quizzes[currentQuizStep].correctIndex) {
+                        if (currentQuizStep < mod.quizzes.length - 1) { setCurrentQuizStep(prev => prev + 1); setQuizAnswer(null); }
+                        else {
+                            if (currentModule < modules.length - 1) { setCurrentModule(prev => prev + 1); setCurrentSlide(0); setIsQuizActive(false); }
+                            else setView('checklist');
+                        }
+                    }
+                }
+            };
+
+            if (view === 'home') return (
+                <div className="flex flex-col items-center justify-center space-y-12 animate-fade-in h-screen py-10 px-6 max-w-4xl mx-auto">
+                    <div className="text-center">
+                        <div className="bg-gradient-to-tr from-blue-600 to-indigo-600 w-24 h-24 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-200">
+                            <Icon name="Mic2" size={48} className="text-white" />
+                        </div>
+                        <h1 className="text-5xl font-black text-slate-800 mb-4 tracking-tighter">Vocal 敬拜和聲魔法</h1>
+                        <p className="text-slate-400 text-lg font-medium italic">零基礎白話文網頁版教學系統</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+                        <button onClick={() => setView('assessment')} className="p-10 bg-slate-900 text-white rounded-[3rem] text-left hover:scale-[1.02] transition-all shadow-2xl relative overflow-hidden group">
+                            <Icon name="Zap" size={40} className="mb-6 text-blue-400 group-hover:animate-pulse" />
+                            <h3 className="text-3xl font-black text-white">實力診斷</h3>
+                            <p className="text-slate-400 text-sm mt-3 leading-relaxed">分析聽覺與邏輯，獲得客製化學習路徑。</p>
+                        </button>
+                        <button onClick={() => { setRecommendation(null); setView('module'); setIsQuizActive(false); setCurrentSlide(0); }} className="p-10 bg-white border-2 border-slate-100 rounded-[3rem] text-left hover:border-blue-200 hover:bg-blue-50 transition-all shadow-sm group">
+                            <Icon name="Layout" size={40} className="mb-6 text-indigo-500" />
+                            <h3 className="text-3xl font-black text-slate-800">探索單元</h3>
+                            <p className="text-slate-500 text-sm mt-3 leading-relaxed">直接挑選主題進入，含詳細解說與測驗。</p>
+                        </button>
+                    </div>
+                </div>
+            );
+
+            if (view === 'assessment') return (
+                <div className="space-y-8 animate-slide-up h-screen flex flex-col p-10 max-w-4xl mx-auto">
+                    <div className="flex justify-between items-center mb-4 shrink-0">
+                        <div className="flex items-center space-x-4">
+                            <button onClick={() => setView('home')} className="p-3 hover:bg-slate-100 rounded-2xl"><Icon name="ChevronLeft" size={24} /></button>
+                            <h2 className="text-4xl font-black text-slate-800 tracking-tighter">能力診斷</h2>
+                        </div>
+                        <button onClick={resetAssessment} className="text-slate-400 hover:text-red-500 flex items-center space-x-1 font-bold"><Icon name="RotateCcw" size={16} /><span>重置</span></button>
+                    </div>
+                    <div className="flex-grow space-y-4 overflow-y-auto pr-4 custom-scrollbar">
+                        {quizQuestions.map((q, i) => (
+                            <div key={i} className="p-8 bg-white border border-slate-100 rounded-[2.5rem] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                <div className="space-y-2">
+                                    <p className="text-slate-800 font-black text-xl leading-tight">{q.q}</p>
+                                    <div className="flex items-center space-x-2 text-xs text-slate-400 font-bold uppercase tracking-wider"><Icon name="Lightbulb" size={14} className="text-amber-400" /><span>{q.tip}</span></div>
+                                </div>
+                                <div className="flex space-x-3 shrink-0">
+                                    <button onClick={() => setAnswers(prev => ({...prev, [i]: 'yes'}))} className={`px-8 py-4 rounded-2xl font-black transition-all ${answers[i] === 'yes' ? 'bg-blue-600 text-white shadow-xl' : 'bg-slate-50 text-slate-400'}`}>是</button>
+                                    <button onClick={() => setAnswers(prev => ({...prev, [i]: 'no'}))} className={`px-8 py-4 rounded-2xl font-black transition-all ${answers[i] === 'no' ? 'bg-slate-800 text-white shadow-xl' : 'bg-slate-50 text-slate-400'}`}>否</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <button onClick={handleAnalyze} disabled={Object.keys(answers).length < quizQuestions.length} className={`w-full py-6 rounded-3xl font-black text-xl transition-all shrink-0 ${Object.keys(answers).length < quizQuestions.length ? 'bg-slate-100 text-slate-300' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-2xl'}`}>生成我的學習路徑</button>
+                </div>
+            );
+
+            if (view === 'module') {
+                const mod = modules[currentModule];
+                const slide = mod.slides[currentSlide];
+                return (
+                    <div className="h-screen flex flex-col animate-fade-in p-10 max-w-7xl mx-auto w-full">
+                        <div className="flex items-center justify-between mb-8 shrink-0">
+                            <div className="flex items-center space-x-6">
+                                <button onClick={() => setView('home')} className="p-3 bg-slate-100 rounded-2xl text-slate-800 hover:bg-slate-200 transition-colors"><Icon name="Home" size={24} /></button>
+                                <div>
+                                    <div className="flex items-center space-x-3 mb-1">
+                                        <span className="text-[11px] font-black px-3 py-1 bg-emerald-100 text-emerald-600 rounded-full tracking-[0.2em]">{mod.level}</span>
+                                        <h3 className="font-black text-2xl text-slate-800 tracking-tight">{mod.title}</h3>
+                                    </div>
+                                    <p className="text-sm text-slate-400 font-bold">{mod.description}</p>
+                                </div>
+                            </div>
+                            <div className="flex space-x-2">
+                                {modules.map((_, i) => (<button key={i} onClick={() => { setCurrentModule(i); setCurrentSlide(0); setIsQuizActive(false); }} className={`h-2 rounded-full transition-all ${i === currentModule ? 'bg-blue-600 w-12' : 'bg-slate-200 w-4'}`} />))}
+                            </div>
+                        </div>
+                        {recommendation && recommendation.idx === currentModule && (
+                            <div className="bg-blue-50 border border-blue-100 p-5 rounded-[2rem] mb-8 flex items-center space-x-4 animate-slide-up shrink-0">
+                                <Icon name="Star" size={20} className="text-blue-500" />
+                                <p className="text-lg text-blue-800 font-black leading-tight italic">{recommendation.reason}</p>
+                            </div>
+                        )}
+                        <div className="flex-grow flex flex-col lg:flex-row gap-10 overflow-hidden">
+                            <div className="flex-1 bg-slate-50 rounded-[3.5rem] p-12 border border-slate-100 relative overflow-hidden flex flex-col shadow-inner">
+                                {!isQuizActive ? (
+                                    <div className="flex flex-col h-full overflow-y-auto custom-scrollbar">
+                                        <div className="flex items-center space-x-3 text-blue-500 mb-8 font-black uppercase tracking-[0.3em] text-sm shrink-0">
+                                            <Icon name="PlayCircle" size={22} /><span>投影片 {currentSlide + 1} / {mod.slides.length}</span>
+                                        </div>
+                                        <h2 className="text-4xl font-black text-slate-800 mb-10 tracking-tight leading-tight shrink-0">{slide.title}</h2>
+                                        <div className="text-2xl text-slate-600 leading-[1.6] whitespace-pre-line font-bold flex-grow italic">{slide.content}</div>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col h-full animate-slide-up overflow-y-auto custom-scrollbar">
+                                        <div className="flex justify-between items-center mb-8 shrink-0">
+                                            <div className="flex items-center space-x-2 text-amber-500 font-black text-sm uppercase tracking-widest"><Icon name="HelpCircle" size={18} /><span>單元測驗 {currentQuizStep + 1} / {mod.quizzes.length}</span></div>
+                                        </div>
+                                        <h2 className="text-2xl font-black text-slate-800 mb-8 leading-snug shrink-0">{mod.quizzes[currentQuizStep].question}</h2>
+                                        <div className="space-y-4 flex-grow mb-6">
+                                            {mod.quizzes[currentQuizStep].options.map((opt, idx) => (
+                                                <button key={idx} onClick={() => setQuizAnswer(idx)} className={`w-full p-6 rounded-[2rem] text-left border-2 transition-all flex items-center justify-between ${quizAnswer === idx ? (idx === mod.quizzes[currentQuizStep].correctIndex ? 'border-emerald-500 bg-emerald-50 shadow-lg' : 'border-red-500 bg-red-50 shadow-lg') : 'border-slate-100 bg-white hover:border-blue-200'}`}>
+                                                    <span className={`font-bold text-lg ${quizAnswer === idx ? (idx === mod.quizzes[currentQuizStep].correctIndex ? 'text-emerald-700' : 'text-red-700') : 'text-slate-600'}`}>{opt.text}</span>
+                                                    {quizAnswer === idx && (idx === mod.quizzes[currentQuizStep].correctIndex ? <Icon name="CheckCircle2" size={20} className="text-emerald-500 shrink-0" /> : <Icon name="AlertCircle" size={20} className="text-red-500 shrink-0" />)}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {quizAnswer !== null && (
+                                            <div className={`mt-auto p-6 rounded-[2rem] font-bold italic text-lg shadow-sm border ${quizAnswer === mod.quizzes[currentQuizStep].correctIndex ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-red-100 text-red-800 border-red-200'}`}>
+                                                {mod.quizzes[currentQuizStep].options[quizAnswer].explanation}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                <div className="mt-12 flex justify-between items-center shrink-0">
+                                    <button disabled={currentSlide === 0 && !isQuizActive} onClick={() => { if (isQuizActive && currentQuizStep === 0) setIsQuizActive(false); else if (isQuizActive) setCurrentQuizStep(p => p - 1); else setCurrentSlide(p => p - 1); }} className="p-5 rounded-full bg-white border text-slate-400 hover:text-blue-600 disabled:opacity-20 transition-all"><Icon name="ChevronLeft" size={28} /></button>
+                                    <div className="flex space-x-3">
+                                        {mod.slides.map((_, i) => (<div key={i} className={`h-2 rounded-full transition-all ${!isQuizActive && i === currentSlide ? 'w-12 bg-blue-500' : 'w-3 bg-slate-200'}`} />))}
+                                        <div className={`h-2 rounded-full transition-all ${isQuizActive ? 'w-12 bg-amber-500' : 'w-3 bg-slate-200'}`} />
+                                    </div>
+                                    <button onClick={handleNext} disabled={isQuizActive && quizAnswer !== mod.quizzes[currentQuizStep].correctIndex} className={`p-5 rounded-full shadow-2xl transition-all ${isQuizActive ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-200'} text-white disabled:opacity-20`}><Icon name="ChevronRight" size={28} /></button>
+                                </div>
+                            </div>
+                            <div className="w-full lg:w-[450px] flex flex-col shrink-0">
+                                <h4 className="flex items-center space-x-3 text-sm font-black text-slate-400 uppercase tracking-[0.3em] mb-6 shrink-0"><Icon name="ClipboardCheck" size={20} /><span>單元祕笈 (點擊勾選)</span></h4>
+                                <div className="flex-grow space-y-5 overflow-y-auto pr-4 custom-scrollbar pb-6">
+                                    {mod.checks.map((check) => (
+                                        <div key={check.id} onClick={() => toggleCheck(check.id)} className={`p-7 rounded-[2.5rem] cursor-pointer border-2 transition-all duration-500 shrink-0 ${checkedItems[check.id] ? 'bg-white border-blue-600 shadow-2xl ring-8 ring-blue-50/30' : 'bg-white border-slate-50 hover:border-slate-200 shadow-sm'}`}>
+                                            <div className="flex items-start space-x-5">
+                                                <div className={`w-8 h-8 mt-1 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${checkedItems[check.id] ? 'bg-blue-600 border-blue-600 rotate-[360deg]' : 'border-slate-200'}`}>{checkedItems[check.id] && <Icon name="CheckCircle2" size={18} className="text-white" />}</div>
+                                                <div className="flex-grow">
+                                                    <span className={`text-xl font-black leading-tight block mb-2 ${checkedItems[check.id] ? 'text-blue-800' : 'text-slate-600'}`}>{check.text}</span>
+                                                    {checkedItems[check.id] && <div className="mt-6 p-6 bg-slate-50 rounded-[2rem] border-l-8 border-blue-500 shadow-inner animate-slide-up"><div className="text-lg whitespace-pre-line leading-relaxed italic text-slate-600 font-bold">{check.lesson}</div></div>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (view === 'checklist') {
+                const totalChecks = modules.reduce((acc, m) => acc + m.checks.length, 0);
+                const completedChecks = Object.keys(checkedItems).filter(k => checkedItems[k]).length;
+                const progress = Math.round((completedChecks / totalChecks) * 100);
+                return (
+                    <div className="animate-fade-in h-screen flex flex-col p-10 overflow-y-auto custom-scrollbar max-w-6xl mx-auto w-full">
+                        <div className="text-center mb-12 shrink-0">
+                            <Icon name="Trophy" size={72} className="mx-auto text-yellow-500 mb-6 drop-shadow-2xl" />
+                            <h2 className="text-5xl font-black text-slate-800 mb-3 tracking-tighter">敬拜和聲祕笈總覽</h2>
+                            <p className="text-slate-500 text-lg font-bold italic">恭喜！這是屬於你的成長路徑</p>
+                        </div>
+                        <div className="bg-slate-900 rounded-[4rem] p-12 text-white mb-12 shadow-2xl shrink-0">
+                            <div className="flex justify-between items-end mb-8">
+                                <div><p className="text-slate-400 text-xs font-black tracking-[0.4em] mb-3 uppercase">總體達成進度</p><h3 className="text-7xl font-black tracking-tighter">{progress}%</h3></div>
+                                <div className="text-right"><p className="text-slate-400 text-xs font-black tracking-[0.4em] mb-3 uppercase">解鎖技能數</p><p className="text-3xl font-black tabular-nums">{completedChecks} / {totalChecks}</p></div>
+                            </div>
+                            <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden"><div className="bg-gradient-to-r from-blue-500 to-indigo-400 h-full transition-all duration-1000" style={{ width: `${progress}%` }} /></div>
+                        </div>
+                        <div className="space-y-10 pb-12 flex-grow">
+                            {modules.map((m) => (
+                                <div key={m.id} className="bg-white p-10 rounded-[3.5rem] border-2 border-slate-50 shadow-xl">
+                                    <h4 className="font-black text-3xl mb-8 flex items-center space-x-4 border-b pb-6"><Icon name="Music" className="text-blue-500" size={28} /><span>{m.title}</span></h4>
+                                    <div className="grid grid-cols-1 gap-10">
+                                        {m.checks.map((c) => (
+                                            <div key={c.id} className={`transition-all duration-1000 ${checkedItems[c.id] ? 'opacity-100' : 'opacity-10 grayscale blur-[2px]'}`}>
+                                                <div className="flex items-center space-x-5 mb-5"><div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkedItems[c.id] ? 'bg-emerald-500' : 'bg-slate-200'}`}>{checkedItems[c.id] && <Icon name="CheckCircle2" size={18} className="text-white" />}</div><span className="text-2xl font-black">{c.text}</span></div>
+                                                <div className="ml-12 p-8 bg-slate-50 rounded-[2.5rem] text-xl text-slate-500 italic leading-relaxed whitespace-pre-line border-l-8 border-blue-500 font-bold">{c.lesson}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <button onClick={() => setView('home')} className="w-full py-6 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-[2.5rem] font-black text-xl mt-6 shrink-0 transition-colors shadow-md">返回首頁</button>
+                    </div>
+                );
+            }
+
+            return null;
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
